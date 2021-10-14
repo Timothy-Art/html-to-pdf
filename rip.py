@@ -120,7 +120,7 @@ class PageRipper:
         elem = session.find_element_by_css_selector('.portletBody>p>a')
         elem.click()
         windows = session.window_handles
-        session.switch_to_window(windows[-1])
+        session.switch_to.window(windows[-1])
         self.wait_for_persuall(session)
         elem = session.find_element_by_css_selector(f'[title="{self.title}"]')
         elem.click()
@@ -131,7 +131,7 @@ class PageRipper:
         """
         elem = session.find_element_by_css_selector('.chapter>iframe')
         iframe = elem.get_property('id')
-        session.switch_to_frame(iframe)
+        session.switch_to.frame(iframe)
 
         return self.embedder.embed_images(session)
 
@@ -157,7 +157,7 @@ class PageRipper:
         """
         Starts the ripping process. Outputs HTML to an output directory.
         """
-        session = self.driver(options=options)
+        session = self.driver
         self.setup(session)
         self.pages = len(session.find_elements_by_class_name('outline-item'))
 
@@ -165,29 +165,32 @@ class PageRipper:
         retries = 0
         bar = ChargingBar('Ripping', max=self.pages)
         bar.index = i
-        while i < self.pages and retries <= 10:
+        while i < self.pages and retries <= 3:
             try:
-                print(f'.outline-item[data-index="{i}"]')
+                selector = f'.outline-item[data-index="{i}"]'
+                print(selector)
 
                 WebDriverWait(session, 60).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, f'.outline-item[data-index="{i}"]'))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, selector))
                 )
                 session.execute_script(
                     "Array.prototype.map.call(document.getElementsByClassName('outline-item'), "
                     "ele => {ele.style.display = 'block'});"
                 )
-                elem = session.find_element_by_css_selector(f'.outline-item[data-index="{i}"]')
-                title = elem.text
-                elem.click()
-                self.wait_for_page(session)
-                f = self.rip_and_tear(session)
-                with open(f'{directory}/{i:04}_{title}.html', 'w', encoding='utf-8-sig') as outfile:
-                    outfile.write(f)
-                session.switch_to_default_content()
+                elem = session.find_element_by_css_selector(selector)
+                if elem.get_property('dataset').get('indent') <= '1':
+                    title = elem.text.replace('?', '')
+                    elem.click()
+                    self.wait_for_page(session)
+                    f = self.rip_and_tear(session)
+                    with open(f'{directory}/{i:04}_{title}.html', 'w', encoding='utf-8-sig') as outfile:
+                        outfile.write(f)
+                session.switch_to.default_content()
                 i += 1
                 retries = 0
                 bar.next()
-            except:
+            except Exception as e:
+                print(e)
                 retries += 1
 
         bar.finish()
@@ -204,7 +207,7 @@ class PageRipper:
 @click.option('--password', prompt='Password?', hide_input=True)
 def rip(driver, username, password, site, title, headless, directory):
     driver, options = get_driver(driver, headless)
-    if os.path.isdir(directory):
+    if not os.path.isdir(directory):
         os.mkdir(directory)
     PageRipper(
         driver=driver,

@@ -18,7 +18,7 @@ from merge import PageMerger
 def main(username, password, driver, site, title, directory, headless, output):
     driver, options = get_driver(driver, headless)
 
-    if os.path.isdir(directory):
+    if not os.path.isdir(directory):
         os.mkdir(directory)
 
     PageRipper(
